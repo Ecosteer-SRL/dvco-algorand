@@ -1,0 +1,108 @@
+#pragma version 3
+
+
+//  the transaction group can contain:
+//  1) just one pay transaction             (GroupSize == 1)
+//  2) just one appl transaction            (GroupSize == 1)
+//  3) more than one transaction            (GroupSize >= 2)
+
+global GroupSize
+int 2
+>=
+bnz group   //  the transaction group contains more than one transaction
+            
+
+global GroupSize
+int 1
+==
+bnz single  //  the transaction group contains a single transaction
+
+int 0
+return      //  the transaction group is empty
+
+
+single:
+//  the transaction group contains a single transaction
+//  the transaction can only be of type "pay" or type "appl"
+gtxn 0 TypeEnum
+int pay
+==
+bnz pay_transaction     //  the single transaction in the transaction group is of type "pay"
+                        //  process pay transaction
+
+gtxn 0 TypeEnum
+int appl
+==
+bnz appl_transaction    //  the single transaction in the transaction group is of type "appl"
+                        //  process appl transaction
+
+int 0                   //  the single transaction in the transaction group id not of type "pay" nor of type "appl"
+                        //  rollback
+return                  
+
+pay_transaction:
+//  process the transaction of type "pay"
+//  check if the pay transaction is a withdrawal (the contract address is the --from address)
+//  in this case the address of the receiver can only be the creator of the smart contract
+//  NOTE:   as the dop.account.teal contract is stateless, the address of the receiver
+//          can only be used as a literal (constant), meaning that
+//          => the smart contract code will have to be created programmatically and on demand
+gtxn 0 Receiver
+addr _RECEIVERADDRESS_
+!=
+bnz rollback    //  the receiver address is not equal to the creator address
+                //  rollback
+
+int 100         //  this is an authorized withdrawal (the receiver address is equal to the creator address)
+                //  authorize the transaction
+return
+
+
+appl_transaction:
+//  process the transaction of type "appl"
+//  the transaction will be processed by the stateful smart contract
+//  and thus this transaction will be approved
+int 200
+return
+
+group:
+//  the transaction group contains at least two transactions
+//  in this case:
+//      1)  the first transaction must be of type "pay"
+//      2)  the second transaction must be of type "appl"
+gtxn 0 TypeEnum
+int pay
+!=
+bnz rollback    //  the first transaction is not of type "pay"
+                //  rollback
+
+gtxn 1 TypeEnum
+int appl
+!=
+bnz rollback    //  the second transaction is not of type "appl", rollback
+                //  rollback
+
+//  the first transaction is of type "pay"
+//  the second transaction is of type "appl"
+
+//  now check that the second transaction has a valid ApplicationID
+
+gtxn 1 ApplicationID
+int 0
+==
+bnz rollback    //  the second transaction (type "appl") has no valid ApplicationID (ApplicationID == 0)
+                //  rollback
+
+//  the second transaction of type "appl" has a valid ApplicationID
+
+//  now check that the amount of the first transaction (of type "pay") is valid (>= 100000)
+
+gtxn 0 Amount
+int 100000
+>=
+return          //  the stack contains a value != (result from the comparison)
+                //  this authorizes the transaction
+
+rollback:
+int 0
+return
