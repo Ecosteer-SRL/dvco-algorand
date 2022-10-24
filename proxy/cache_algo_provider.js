@@ -1,3 +1,7 @@
+//  version     3.0
+//  date:       24/10/2022
+//  author:     Gabriele Sankalaite
+
 "use strict";
 
 const providerVersion = "3.0";
