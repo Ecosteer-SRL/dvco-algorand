@@ -1,3 +1,6 @@
+#   date:   24/10/2022
+#   author: georgiana-bud
+
 """
 Minimalistic implementation of platform's errors
 """
