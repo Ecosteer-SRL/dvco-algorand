@@ -10,18 +10,20 @@ The configuration entry for the worker component follows the yaml specification.
 
 >  	provider: 'workerAlgorand'
 
->  	configuration: 'atokf=/home/ecosteer/dop/externals/algorand/net1/Primary/algod.token; atoken=ALGO_TOKEN;            
+>  	configuration: 'atokf=/home/ecosteer/dop/externals/algorand/net1/Primary/algod.token; 
+>>      atoken=ALGO_TOKEN;            
 >>		anetf=/home/ecosteer/dop/externals/algorand/net1/Primary/algod.net;
->>		anetip=ALGO_IP; anetprt=ALGO_PRT;
+>>		anetip=ALGO_IP; 
+>>      anetprt=ALGO_PRT;
 >>		ktokf=/home/ecosteer/dop/externals/algorand/net1/Primary/kmd.token;
 >>		knetf=/home/ecosteer/dop/externals/algorand/net1/Primary/kmd.net;
 >>		ktoken=KMD_TOKEN;
 >>		knetip=KMD_IP;
 >>		knetprt=KMD_PRT;
->>		scrf=/home/ecosteer/dvco/algorand/contract/smartcontracts/DOP; 
->>		sttp=dop.account/dop.account.teal.template;
->>		tapp=dop.stateful/dop.stateful.teal;
->>		tcpp=dop.clear/basicClear.teal;
+>>		scrf=/home/ecosteer/dvco/algorand/worker; 
+>>		sttp=dop.account.teal.template;
+>>		tapp=dop.stateful.teal;
+>>		tcpp=basicClear.teal;
 >>		userwlab=USER_WALL;
 >> 		userpwd=UW_PWD;
 >> 		ownmne=OWN_MNEMONIC;'

@@ -1,0 +1,444 @@
+//  vers:       1.4
+//  date:       30/11/2021
+//  auth:       graz
+
+#pragma version 5
+
+txn ApplicationID   //  get ApplicationID
+int 0               
+==
+bnz app_creation    //  if non zero, jump to app_creation:
+                    //  ApplicationID == 0 only during smart cintract creation
+
+txn OnCompletion
+int OptIn           //  a subscriber is opting in
+==
+bnz subscriber_optin
+
+txn OnCompletion
+int CloseOut        //  a subscriber is opting out
+==
+bnz subscriber_optout
+
+txn OnCompletion
+int DeleteApplication
+==
+bnz app_deletion
+
+//  [NOTE 01]
+//  here the following assertions are true:
+//  1)  ApplicationID != 0                  (not creating the smart contract)
+//  2)  OnCompletion != OptIn               (not a subscriber opting in transaction)
+//  3)  OnCompletion != CloseOut            (not a subscriber opting out transaction)
+//  4)  OnCompletion != DeleteApplication   (not a smart contract deletion transaction)
+
+//  STD PROCESSING
+//  the transactions group can hold 1 or more transactions
+//  if the group holds just 1 transaction then the transaction MUST BE of type APPL (appl)
+//  if the group holds 2 or more transactions then 
+//  the first transaction MUST BE of type PAY (pay)
+//  and the second transaction MUST BE of type APPL (appl)
+global GroupSize
+int 1
+==
+bnz single          //  the transaction group holds only 1 transaction
+
+global GroupSize
+int 2
+==
+bnz group           //  the transaction group holds 2 transactions
+
+//  the group does not contain one transaction
+//  the group does not contain two transactions
+//  so here we decide to rollback (return 0)
+//  ROLLBACK
+int 0
+return
+
+single:
+//====================================================================
+//  the smart contract has been created already, etc. see [NOTE 01]
+//====================================================================
+//  the group contain a single transaction
+//  the transaction MUST be of type APPL (appl)
+txn TypeEnum
+int appl
+!=
+bnz rollback        //  the transaction is not of type appl
+
+//  here the following interfaces have to be implemented
+//  1)  subscribe       --from subscriber
+//  2)  unsubscribe     --from subscriber
+//  3)  getkey          --from subscriber
+//  3)  grant           --from creator
+//  4)  revoke          --from creator
+//  5)  charge          --from creator
+//  6)  setkey          --from creator
+
+byte "creator"
+app_global_get
+txn Sender
+==
+bnz creator_logic       //  txn.Sender == "creator", jump to creator_logic
+
+//  the txn.Sender is not the creator of the smart contract
+subscriber_logic:
+//  the following ops are supported/implemented
+//  1)  subscribe       --from subscriber
+//  2)  unsubscribe     --from subscriber
+//  3)  getkey          --from subscriber  
+txna ApplicationArgs 0
+byte "subscribe"
+==
+bnz op_subscribe
+
+txna ApplicationArgs 0
+byte "unsubscribe"
+==
+bnz op_unsubscribe
+
+txna ApplicationArgs 0
+byte "getkey"
+==
+bnz op_sub_getkey
+
+
+byte "err=255;"             //  unsupported op
+log
+int 1255                    //  unsupported operation - no matter what - charge the sender
+return
+
+
+op_subscribe:
+//  subscriber logic
+//  set account local storage (subscription)
+//  initializes "subscription" and "grant"
+int 0                       //  the Sender of the transaction
+byte "subscription"         //  slot "subscription"
+int 1
+app_local_put
+
+int 0
+byte "grant"                //  slot "grant"
+int 0
+app_local_put
+
+int 1000
+return
+
+op_unsubscribe:
+//  subscriber logic
+//  here
+//  if the subscriber still ha credits, the subscriber has to be refunded
+//  implementation 0.1
+int 0
+byte "subscription"
+int 0
+app_local_put
+int 1010
+return
+
+op_sub_getkey:
+//  subscriber logic
+//  store key into address local storage
+//  check if the Sender is
+//      subscribed AND granted AND credit is enough
+//      TODO:   at the moment only the GRANT status is being checked
+//  NOTE:
+//      if the subscriber is not granted then the transaction succeeds (the subscriber is charged no matter what)
+//      if the subscriber is granted and she has available credit the the log returns "0"
+//      if the subscriber is not subscribed :) then the log retusn "1"
+//      if the subscriber is not granted then the log retuns "2" (not granted)
+//      if the subscriber is granted but she has no credit availeble then the log returns "3"
+
+int 0                   //  the sender (subscriber)
+byte "subscription"
+app_local_get
+int 1
+!=
+bnz not_subscribed      //  the requesting account is not SUBSCRIBED
+
+int 0                   //  the sender (subscriber)
+byte "grant"
+app_local_get
+int 1
+!=
+bnz not_granted          // the requesting account is NOT GRANTED
+
+//  TODO:
+//  HERE we need to check if the subscriber (granted and subscribed has credit)
+//  this has to be done by checking her local storage (credit)
+
+//  the sender (subscriber) is passing a kid (ApplicationArgs 1), this
+//  kid has to be equal to the kid in the global storage (kid)
+txna ApplicationArgs 1  //  "kid"
+byte "kid"
+app_global_get
+!=
+bnz op_sub_wrongkid
+
+//  TODO:
+//  future release, check credit
+
+//  the requesting account is SUBSCRIBED and GRANTED
+
+//  copy KID from GLOBAL to LOCAL storage
+int 0                   //  the sender
+byte "kid"
+byte "kid"  
+app_global_get
+app_local_put
+
+//  copy KEY from GLOBAL to LOCAL storage
+int 0                   //  the sender
+byte "key"
+byte "key"              //  get the global key
+app_global_get          //  get the global key
+app_local_put
+
+byte "err=0;"
+log
+
+byte "key="
+byte "key"
+app_global_get
+concat
+byte ";"
+concat
+log
+
+int 100
+return
+
+not_subscribed:
+byte "err=1;"
+log
+int 101
+return
+
+not_granted:
+byte "err=2;"           //  the subscriber is not granted
+log
+int 102                 //  the transaction succeeds anyway
+return
+
+op_sub_wrongkid:
+byte "err=3;"
+log
+int 103
+return
+
+
+
+
+creator_logic:
+//  3)  grant           --from creator
+//  4)  revoke          --from creator
+//  5)  charge          --from creator
+//  6)  setkey          --from creator
+//  7)  getkey
+
+txna ApplicationArgs 0
+byte "grant"
+==
+bnz op_grant
+
+txna ApplicationArgs 0
+byte "revoke"
+==
+bnz op_revoke
+
+txna ApplicationArgs 0
+byte "charge"
+==
+bnz op_charge
+
+txna ApplicationArgs 0
+byte "setkey"
+==
+bnz op_setkey
+
+txna ApplicationArgs 0
+byte "getkey"
+==
+bnz op_pub_getkey
+
+byte "err=255;"         //  unsupported method
+log
+
+int 1255
+return
+
+
+op_pub_getkey:
+txna ApplicationArgs 1  //  "kid"
+byte "kid"
+app_global_get
+!=
+bnz op_pub_wrongkid
+
+//  matching kids
+byte "err=0;"
+log
+byte "key="
+byte "key"
+app_global_get
+concat
+byte ";"
+concat
+log
+
+byte "kid="
+byte "kid"
+app_global_get
+concat
+byte ";"
+concat
+log
+
+int 100
+return
+
+op_pub_wrongkid:
+byte "err=10;"
+log
+int 110
+return
+
+
+op_grant:
+//  second argument is the address of the subscriber 
+//txna ApplicationArgs 1
+int 1           //  the first address passed as an argument
+                //  from goal:  the address has to be passed to the smart contract using
+                //  --app-account (see 06_call_grant.sh)
+byte "grant"
+int 1
+app_local_put
+
+byte "err=0;"
+log
+
+int 2000
+return
+
+op_revoke:
+//  second argument is the address of the subscriber
+//txna ApplicationArgs 1
+int 1
+byte "grant"
+int 0
+app_local_put
+
+byte "err=0;"
+log
+
+int 2010
+return
+
+op_charge:
+//  TODO:   not implemented yet
+int 2020
+return
+
+op_setkey:
+//  the second argument is the "key buffer"
+//  the third argument is the "key index" (kid)
+byte "key"
+txna ApplicationArgs 1
+app_global_put
+
+byte "kid"
+txna ApplicationArgs 2
+app_global_put
+
+byte "err=0;"
+log
+
+int 2030
+return
+
+
+
+group:
+//===================================================
+//  the smart contract has been created already
+//===================================================
+//  the group contains at least 2 transaction
+//  the first transaction has to be of type pay
+//  the second transaction has to be of type appl
+gtxn 0 TypeEnum
+int pay
+!=
+bnz rollback                //  the first transaction is not of type pay, rollback
+
+gtxn 1 TypeEnum
+int appl
+!=
+bnz rollback                //  the second transaction is not of type appl, rollback
+
+//  the first transaction is of type pay
+//  the second transaction is of type appl
+
+//  check if the receiver is the address (stateless smart contract)
+//  stored into app global "linked"
+gtxn 0 Receiver
+byte "linked"
+app_global_get
+!=
+bnz rollback        //  the receiver is not the creator of the contract, rollback
+
+//  here the following ops have to be implemented:
+//  deposit     
+//      the sender is the subscriber, the subscriber has to be properly subscribed
+
+//  ok, for now everything OK
+int 500
+return
+
+
+
+
+app_creation:   
+//  the smart contract is being created right now
+//  1)  the address of the creator (Sender) is stored in global space
+//  2)  the address of the stateless account contract (for deposit and withdrawal)
+byte "creator"              //  store the Sender address in global space
+txn Sender
+app_global_put
+
+byte "linked"               //  store the stateless contract address in global space
+txna ApplicationArgs 0      //  the smart contract address is passed as the arg 0 during creation
+app_global_put
+
+byte "key"
+byte "0x00"                 //  key (crypto tool) is represented as a string (user defined syntax)
+app_global_put
+
+byte "kid"
+byte "0x00"                 //  kid (crypto tool index) is represented as a string (user defined)
+app_global_put
+
+int 10
+return 
+
+app_deletion:
+//  the smart contract is being deleted
+int 20
+return
+
+
+subscriber_optin:
+//  an account is opting in
+int 30
+return
+
+subscriber_optout:
+//  an account is opting out
+int 40
+return
+
+
+rollback:
+int 0
+return
