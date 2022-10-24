@@ -52,14 +52,14 @@ The required entries in the configuration string are:
 Proxy component requires the following configuration file for Algorand provider. 
 
 >> 		"provider": {
->> 		        "path": "/home/ecosteer/dop/provider/javascript/intermediation/algorand/cache_algo.js",
->> 			"conf": "store=/home/ecosteer/dop/stack/proxy/javascript/store/storeFileAlgo.json;nodeToken=NODE_EX_TOKEN;nodeTokenPath=NODE_TOKEN_PATH;nodePort=NODE_EX_PORT;nodePortPath=NODE_PORT_PATH;nodeServer=NODE_HOST;DOPalgorand=/home/ecosteer/dop/provider/javascript/intermediation/algorand/DOPalgorand.js"
+>> 		        "path": "/home/ecosteer/dvco/algorand/proxy/cache_algo_provider.js",
+>> 			"conf": "store=/home/ecosteer/dvco/algorand/proxy/storeFileAlgo.json;nodeToken=NODE_EX_TOKEN;nodeTokenPath=NODE_TOKEN_PATH;nodePort=NODE_EX_PORT;nodePortPath=NODE_PORT_PATH;nodeServer=NODE_HOST;DOPalgorand=/home/ecosteer/dvco/algorand/proxy/DOPalgorand.js"
 >> 		    } 
 
-store - a path to the storeFile.json file where the key-value pairs will be stored for persistence and retrieved upon the initialization of the provider to then be stored in key-value array.
-nodeToken – Algorand token; used when Algorand node is external. If the node is internal, you must leave this blank.
-nodeTokenPath – path to a file with Algorand token; used when Algorand node is internal. If the node is external, you must leave this blank.
-nodePort - a port to which Algorand blockchain is listening; used when Algorand node is external. If the node is internal, you must leave this blank.
-nodePortPath – path to a file with Algorand port; used when Algorand node is internal. If the node is external, you must leave this blank.
-nodeServer - a host on which the Algorand blockchain is running.
-DOPalgorand - a path to the DOPalgorand.js file, which establishes the main method to interact with the Smart Contract on the Algorand blockchain.
+- store - a path to the storeFile.json file where the key-value pairs will be stored for persistence and retrieved upon the initialization of the provider to then be stored in key-value array.
+- nodeToken – the value of Algorand token (algod.token); used when Algorand node is external. If the node is local, you must leave this blank.
+- nodeTokenPath – absolute path of the Algorand token (algod.token); used when Algorand node is local. If the node is external, you must leave this blank.
+- nodePort - Algorand TCP IP port; used when Algorand node is external. If the node is local, you must leave this blank.
+- nodePortPath – absolute path of the Algorand NET file (algod.net), which indicates algod host and port; used when Algorand node is local. If the node is external, you must leave this blank.
+- nodeServer - Algorand TCP IP host.
+- DOPalgorand - a path to the DOPalgorand.js file, which establishes the main method to interact with the Smart Contract on the Algorand blockchain.
